@@ -156,6 +156,9 @@ def need_update():
     with open(LAST_TIME_FN) as f:
         last_time = f.readline().strip()
         last_time_query = f.readline().strip()
+    with open(LAST_TIME_FN, "w") as f:
+        f.write(last_time + "\n")
+        f.write(datetime.now().strftime("%y/%m/%d"))
     last_time_query = datetime.strptime(last_time_query, "%y/%m/%d")
     #print last_time_query, datetime.now()
     if last_time_query.date() == datetime.now().date():
