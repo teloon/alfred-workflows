@@ -62,7 +62,8 @@ def fetch():
     #pprint(data_dic)
     #pprint(last_time)
     with open(LAST_TIME_FN, "w") as f:
-        f.write(last_time)
+        f.write(last_time + "\n")
+        f.write(datetime.now().strftime("%y/%m/%d"))
     pickle.dump(data_dic, open(PICKLE_FN, "wb"))
 
 def create_table(cursor):
@@ -153,7 +154,13 @@ def need_update():
         return True
     last_time = ""
     with open(LAST_TIME_FN) as f:
-        last_time = f.read()
+        last_time = f.readline().strip()
+        last_time_query = f.readline().strip()
+    last_time_query = datetime.strptime(last_time_query, "%y/%m/%d")
+    #print last_time_query, datetime.now()
+    if last_time_query.date() == datetime.now().date():
+        #print "need update"
+        return False
     dt = parse_time(last_time)
     #print "dt", dt
     r = requests.get("https://api.del.icio.us/v1/posts/update", auth=(USR, PASSWD), headers=HEADERS)
