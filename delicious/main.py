@@ -2,11 +2,14 @@
 #-*- coding:utf-8 -*-
 
 import chardet
+import os
 import re
 import requests
 import sqlite3
 import cPickle as pickle
 
+from datetime import datetime
+from Feedback import Feedback
 from lxml import etree
 from pprint import pprint
 
@@ -15,11 +18,12 @@ PICKLE_FN = "datas.pkl"
 HEADERS = {"User-Agent": "Mozilla/5.0",
            "HOST": "api.del.icio.us",
            }
+LAST_TIME_FN = "last_time.txt"
 
 def fetch(usr, passwd):
-    print "getting contents"
+    #print "getting contents"
     r = requests.get("https://api.del.icio.us/v1/posts/all", auth=(usr, passwd), headers=HEADERS)
-    print "got contents"
+    #print "got contents"
     if len(r.text) == 0:
         return
     parser = etree.XMLParser()
@@ -54,17 +58,19 @@ def fetch(usr, passwd):
 
     #pprint(data_dic)
     #pprint(last_time)
+    with open(LAST_TIME_FN, "w") as f:
+        f.write(last_time)
     pickle.dump(data_dic, open(PICKLE_FN, "wb"))
 
 def create_table(cursor):
-    print "creating table bookmark"
+    #print "creating table bookmark"
     cursor.execute("""CREATE TABLE bookmark(
                  id INTEGER PRIMARY KEY,
                  url TEXT UNIQUE NOT NULL,
                  description TEXT,
                  time TEXT
                  )""")
-    print "creating table tags"
+    #print "creating table tags"
     cursor.execute("""CREATE TABLE tags(
                  id INTEGER PRIMARY KEY,
                  bid INTEGER,
@@ -73,9 +79,9 @@ def create_table(cursor):
                  )""")
 
 def drop_table(cursor):
-    print "droping table bookmark"
+    #print "droping table bookmark"
     cursor.execute("""drop TABLE bookmark""")
-    print "droping table tags"
+    #print "droping table tags"
     cursor.execute("""drop TABLE tags""")
 
 def save_to_db():
@@ -84,11 +90,11 @@ def save_to_db():
     c = conn.cursor()
     drop_table(c)
     create_table(c)
-    print "inserting data"
+    #print "inserting data"
     bm_cnter = 1
     for tags, bms in data_dic.items():
         for bm in bms:
-            desc = re.sub(r"'", r"''", bm["desc"])
+            desc = sanitize_sql(bm["desc"])
             sql = "INSERT INTO bookmark(url, description, time) VALUES('%s', '%s', '%s')" % (bm["url"], desc, bm['time'])
             c.execute(sql)
             for tag in tags.strip().split():
@@ -101,9 +107,69 @@ def save_to_db():
 
     #pprint(data_dic)
 
+def dump_data():
+    usr = raw_input("username: ")
+    passwd = raw_input("password: ")
+    fetch(usr, passwd)
+    save_to_db()
+
+def sanitize_sql(s):
+    return re.sub(r"'", r"''", s)
+
+def filtering(tag_lst):
+    tag_lst[:] = map(sanitize_sql, tag_lst)
+    tags = "'" + "', '".join(tag_lst) + "'"
+    #print tags
+    sql = """SELECT bm.*
+             FROM bookmark bm, tags t
+             WHERE (t.tag IN (%s))
+             AND t.bid=bm.id
+             GROUP BY bm.id
+             HAVING COUNT(bm.id)=%d
+    """ % (tags, len(tag_lst))
+    #print sql
+    conn = sqlite3.connect(DB_FN)
+    c = conn.cursor()
+    fb = Feedback()
+    for bid, url, desc, tm in c.execute(sql):
+        fb.add_item("""%s""" % desc,
+                    subtitle="""%s""" % url,
+                    uid=bid,
+                    arg=url)
+    print fb
+
+def parse_time(ts):
+    mat = re.match("(.+)T(.+)Z", ts)
+    day, t = mat.group(1), mat.group(2)
+    y, m, d = map(int, re.findall("(\d+)", day))
+    hr, mnt, sec =map(int, t.split(":"))
+    dt = datetime(y, m, d, hr, mnt, sec)
+    return dt
+
+def need_update():
+    if not os.path.exists(LAST_TIME_FN):
+        return True
+    last_time = ""
+    with open(LAST_TIME_FN) as f:
+        last_time = f.read()
+    dt = parse_time(last_time)
+    #print "dt", dt
+    usr = raw_input("username: ")
+    passwd = raw_input("password: ")
+    r = requests.get("https://api.del.icio.us/v1/posts/update", auth=(usr, passwd), headers=HEADERS)
+    parser = etree.XMLParser()
+    parser.feed(r.text)
+    root = parser.close()
+    curr_last_time = root.get("time")
+    curr_dt = parse_time(curr_last_time)
+    #print "curr_dt", curr_dt
+    if curr_dt > dt:
+        print "need update"
+        return True
+    print "need no update"
+    return False
 
 if __name__ == '__main__':
-    #usr = raw_input("username: ")
-    #passwd = raw_input("password: ")
-    #fetch(usr, passwd)
-    save_to_db()
+    if need_update():
+        dump_data()
+    filtering(["python", "django"])
