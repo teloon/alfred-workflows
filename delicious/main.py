@@ -2,11 +2,13 @@
 #-*- coding:utf-8 -*-
 
 import chardet
+import cPickle as pickle
 import os
 import re
 import requests
 import sqlite3
-import cPickle as pickle
+import sys
+import HTMLParser
 
 from datetime import datetime
 from Feedback import Feedback
@@ -19,10 +21,11 @@ HEADERS = {"User-Agent": "Mozilla/5.0",
            "HOST": "api.del.icio.us",
            }
 LAST_TIME_FN = "last_time.txt"
+USR, PASSWD = "", ""
 
-def fetch(usr, passwd):
+def fetch():
     #print "getting contents"
-    r = requests.get("https://api.del.icio.us/v1/posts/all", auth=(usr, passwd), headers=HEADERS)
+    r = requests.get("https://api.del.icio.us/v1/posts/all", auth=(USR, PASSWD), headers=HEADERS)
     #print "got contents"
     if len(r.text) == 0:
         return
@@ -108,9 +111,7 @@ def save_to_db():
     #pprint(data_dic)
 
 def dump_data():
-    usr = raw_input("username: ")
-    passwd = raw_input("password: ")
-    fetch(usr, passwd)
+    fetch()
     save_to_db()
 
 def sanitize_sql(s):
@@ -131,8 +132,9 @@ def filtering(tag_lst):
     conn = sqlite3.connect(DB_FN)
     c = conn.cursor()
     fb = Feedback()
+    parser = HTMLParser.HTMLParser()
     for bid, url, desc, tm in c.execute(sql):
-        fb.add_item("""%s""" % desc,
+        fb.add_item("""%s""" % parser.unescape(desc),
                     subtitle="""%s""" % url,
                     uid=bid,
                     arg=url)
@@ -154,9 +156,7 @@ def need_update():
         last_time = f.read()
     dt = parse_time(last_time)
     #print "dt", dt
-    usr = raw_input("username: ")
-    passwd = raw_input("password: ")
-    r = requests.get("https://api.del.icio.us/v1/posts/update", auth=(usr, passwd), headers=HEADERS)
+    r = requests.get("https://api.del.icio.us/v1/posts/update", auth=(USR, PASSWD), headers=HEADERS)
     parser = etree.XMLParser()
     parser.feed(r.text)
     root = parser.close()
@@ -164,12 +164,15 @@ def need_update():
     curr_dt = parse_time(curr_last_time)
     #print "curr_dt", curr_dt
     if curr_dt > dt:
-        print "need update"
+        #print "need update"
         return True
-    print "need no update"
+    #print "need no update"
     return False
 
 if __name__ == '__main__':
-    if need_update():
-        dump_data()
-    filtering(["python", "django"])
+    global USR, PASSWD
+    if len(sys.argv) >= 4:
+        tags, USR, PASSWD = sys.argv[1], sys.argv[2], sys.argv[3]
+        if need_update():
+            dump_data()
+        filtering(tags.strip().split())
