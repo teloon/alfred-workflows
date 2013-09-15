@@ -4,7 +4,7 @@ Search bookmarks in your account by tags
 
 ## Screenshot
 
-![img](https://raw.github.com/teloon/alfred-workflows/master/delicious/screenshort.png)
+![img](https://raw.github.com/teloon/alfred-workflows/master/delicious/screenshot.png)
 
 ## How-to
 
