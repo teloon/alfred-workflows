@@ -13,7 +13,6 @@ import HTMLParser
 from datetime import datetime
 from Feedback import Feedback
 from lxml import etree
-from pprint import pprint
 
 DB_FN = "datas.db"
 PICKLE_FN = "datas.pkl"
@@ -24,9 +23,7 @@ LAST_TIME_FN = "last_time.txt"
 USR, PASSWD = "", ""
 
 def fetch():
-    #print "getting contents"
     r = requests.get("https://api.del.icio.us/v1/posts/all", auth=(USR, PASSWD), headers=HEADERS)
-    #print "got contents"
     if len(r.text) == 0:
         return
     parser = etree.XMLParser()
@@ -51,30 +48,23 @@ def fetch():
         tag = post.get("tag")
         desc = post.get("description")
         time = post.get("time")
- #       print desc, chardet.detect(desc)
- #       desc = desc.decode(chardet.detect(desc)['encoding'])
- #       print desc
         url = post.get("href")
         if tag not in data_dic:
             data_dic[tag] = []
         data_dic[tag].append({"url": url, "desc": desc, "time": time})
 
-    #pprint(data_dic)
-    #pprint(last_time)
     with open(LAST_TIME_FN, "w") as f:
         f.write(last_time + "\n")
         f.write(datetime.now().strftime("%y/%m/%d"))
     pickle.dump(data_dic, open(PICKLE_FN, "wb"))
 
 def create_table(cursor):
-    #print "creating table bookmark"
     cursor.execute("""CREATE TABLE bookmark(
                  id INTEGER PRIMARY KEY,
                  url TEXT UNIQUE NOT NULL,
                  description TEXT,
                  time TEXT
                  )""")
-    #print "creating table tags"
     cursor.execute("""CREATE TABLE tags(
                  id INTEGER PRIMARY KEY,
                  bid INTEGER,
@@ -83,9 +73,7 @@ def create_table(cursor):
                  )""")
 
 def drop_table(cursor):
-    #print "droping table bookmark"
     cursor.execute("""drop TABLE bookmark""")
-    #print "droping table tags"
     cursor.execute("""drop TABLE tags""")
 
 def save_to_db():
@@ -94,7 +82,6 @@ def save_to_db():
     c = conn.cursor()
     drop_table(c)
     create_table(c)
-    #print "inserting data"
     bm_cnter = 1
     for tags, bms in data_dic.items():
         for bm in bms:
@@ -109,8 +96,6 @@ def save_to_db():
     conn.commit()
     conn.close()
 
-    #pprint(data_dic)
-
 def dump_data():
     fetch()
     save_to_db()
@@ -121,7 +106,6 @@ def sanitize_sql(s):
 def filtering(tag_lst):
     tag_lst[:] = map(sanitize_sql, tag_lst)
     tags = "'" + "', '".join(tag_lst) + "'"
-    #print tags
     sql = """SELECT bm.*
              FROM bookmark bm, tags t
              WHERE (t.tag IN (%s))
@@ -129,7 +113,6 @@ def filtering(tag_lst):
              GROUP BY bm.id
              HAVING COUNT(bm.id)=%d
     """ % (tags, len(tag_lst))
-    #print sql
     conn = sqlite3.connect(DB_FN)
     c = conn.cursor()
     fb = Feedback()
@@ -160,23 +143,17 @@ def need_update():
         f.write(last_time + "\n")
         f.write(datetime.now().strftime("%y/%m/%d"))
     last_time_query = datetime.strptime(last_time_query, "%y/%m/%d")
-    #print last_time_query, datetime.now()
     if last_time_query.date() == datetime.now().date():
-        #print "need update"
         return False
     dt = parse_time(last_time)
-    #print "dt", dt
     r = requests.get("https://api.del.icio.us/v1/posts/update", auth=(USR, PASSWD), headers=HEADERS)
     parser = etree.XMLParser()
     parser.feed(r.text)
     root = parser.close()
     curr_last_time = root.get("time")
     curr_dt = parse_time(curr_last_time)
-    #print "curr_dt", curr_dt
     if curr_dt > dt:
-        #print "need update"
         return True
-    #print "need no update"
     return False
 
 if __name__ == '__main__':
