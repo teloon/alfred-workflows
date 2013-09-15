@@ -157,7 +157,6 @@ def need_update():
     return False
 
 if __name__ == '__main__':
-    global USR, PASSWD
     if len(sys.argv) >= 4:
         tags, USR, PASSWD = sys.argv[1], sys.argv[2], sys.argv[3]
         if need_update():
