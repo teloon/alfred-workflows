@@ -9,7 +9,7 @@ Search bookmarks in your account by tags
 ## How-to
 
 1. Clone all the code and resources to your own workflow directory;
-2. Config this workflow in alfred: change the parameters of "USR" and "PASSWD" in the filter script to your delicious username and password;
+2. Config this workflow in alfred: change the parameters of "USR" and "PASSWD" in the script filter to your delicious username and password;
 3. Use keyword **dls** to trigger the workflow;
 4. input the query tags and the workflow will automatically get the bookmarks with **all** those tags;
 
