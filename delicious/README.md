@@ -18,3 +18,7 @@ Search bookmarks in your account by tags
 In the current configuration, this workflow will daily check if there're new bookmarks saved. You may change it to your preference. 
 
 **Be cautious**: When this workflow tries to check the updates or download the bookmarks and tags, especially the first time using, it will bring the results to you very slowly. If nothing shows up, try a second or third time. If you're sure the data have already been updated, maybe there are no bookmarks for that tags combination.
+
+## Todo
+
+* Show tag suggestion
