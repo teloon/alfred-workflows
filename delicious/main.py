@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 #-*- coding:utf-8 -*-
 
-import chardet
 import cPickle as pickle
 import os
 import re
@@ -117,12 +116,15 @@ def filtering(tag_lst):
     c = conn.cursor()
     fb = Feedback()
     parser = HTMLParser.HTMLParser()
+    is_empty = True
     for bid, url, desc, tm in c.execute(sql):
+        is_empty = False
         fb.add_item("""%s""" % parser.unescape(desc),
                     subtitle="""%s""" % url,
                     uid=bid,
                     arg=url)
-    print fb
+    if not is_empty:
+        print fb
 
 def parse_time(ts):
     mat = re.match("(.+)T(.+)Z", ts)
@@ -139,11 +141,14 @@ def need_update():
     with open(LAST_TIME_FN) as f:
         last_time = f.readline().strip()
         last_time_query = f.readline().strip()
-    with open(LAST_TIME_FN, "w") as f:
-        f.write(last_time + "\n")
-        f.write(datetime.now().strftime("%y/%m/%d"))
+
+    def update_time():
+        with open(LAST_TIME_FN, "w") as f:
+            f.write(last_time + "\n")
+            f.write(datetime.now().strftime("%y/%m/%d"))
     last_time_query = datetime.strptime(last_time_query, "%y/%m/%d")
     if last_time_query.date() == datetime.now().date():
+        update_time()
         return False
     dt = parse_time(last_time)
     r = requests.get("https://api.del.icio.us/v1/posts/update", auth=(USR, PASSWD), headers=HEADERS)
@@ -154,6 +159,7 @@ def need_update():
     curr_dt = parse_time(curr_last_time)
     if curr_dt > dt:
         return True
+    update_time()
     return False
 
 if __name__ == '__main__':
