@@ -22,3 +22,4 @@ In the current configuration, this workflow will daily check if there're new boo
 ## Todo
 
 * Show tag suggestion
+* Fuzzy tag match
