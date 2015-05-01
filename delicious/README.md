@@ -6,6 +6,13 @@ Search bookmarks in your account by tags
 
 ![img](https://raw.github.com/teloon/alfred-workflows/master/delicious/screenshot.png)
 
+## Prerequisites
+These python libraries are required:
+
+* `requests`
+* `chardet`
+* `lxml`
+
 ## How-to
 
 1. Clone all the code and resources to your own workflow directory;
